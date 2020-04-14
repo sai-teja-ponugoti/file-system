@@ -97,7 +97,7 @@ def result_to_print(r=None):
                 permission += 'w'
             else:
                 permission += '-'
-        if i in [-7, -4, -3]:
+        if i in [-7, -4, -1]:
             if binary[i] == '1':
                 permission += 'x'
             else:
@@ -204,7 +204,7 @@ def cd_function(pwd=None, command=None, parent_id=None):
                                                  database = 'filesys',
                                                  user = 'filesys',
                                                  password = 'asdfgh123')
-            if './' in c[1] :
+            if './' in c[1]:
                 path = pwd + '/' + c[1][2:]
             elif '/' not in c[1]:
                 if pwd != '/':
@@ -369,6 +369,7 @@ def grep_function(pwd, command):
             connection.close()
 
 
+# function to create a new directory using mkdir command just like in Linux systems
 def new_directory(pwd=None, parent_id=None, dir_name=None):
     try:
         connection = mysql.connector.connect(host = 'localhost',
@@ -397,15 +398,18 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
                 check_result = True
         if not check_result:
             # print(type(str(int(max_id) + 1)))
-            insert_folder_tuple = (str(result[0][0] + 1), str(parent_id), str(pwd + dir_name), str(dir_name), '', str(1), str(0))
+            insert_folder_tuple = (
+            str(result[0][0] + 1), str(parent_id), str(pwd + dir_name), str(dir_name), '', str(1), str(0))
             res = cursor.execute(new_dir_folder_table, insert_folder_tuple)
             connection.commit()
-            insert_files_tuple = (str(result[0][0] + 1), str(16877), str(1), str(1000), str(1000), str(int(time.time())), str(int(time.time())), str(int(time.time())), str(4096), 'fodler')
+            insert_files_tuple = (
+            str(result[0][0] + 1), str(16877), str(1), str(1000), str(1000), str(int(time.time())),
+            str(int(time.time())), str(int(time.time())), str(4096), 'fodler')
             res = cursor.execute(new_dir_file_table, insert_files_tuple)
             connection.commit()
-            print("Successfully created a new directory :",dir_name)
+            print("Successfully created a new directory :", dir_name)
         else:
-            print("mkdir: cannot create directory ‘"+dir_name+"’: File exists")
+            print("mkdir: cannot create directory ‘" + dir_name + "’: File exists")
     except mysql.connector.Error as error:
         print("Failed connecting to Database with error :{0}".format(error))
 
@@ -415,7 +419,64 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
             connection.close()
 
 
-def delete_directory(pwd=None,parent_id=None,command=None):
+# function to create a new text file using touch command just like in Linux systems
+def create_touch_file(pwd, parent_id, command):
+    # 33188
+    cmd = command.split(' ', 1)
+    file_name = cmd[1]
+    try:
+        connection = mysql.connector.connect(host = 'localhost',
+                                             database = 'filesys',
+                                             user = 'filesys',
+                                             password = 'asdfgh123')
+        cursor = connection.cursor()
+        # check if a file exists with the same name
+        check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
+        cursor.execute(check_file_query, (parent_id,))
+        result = cursor.fetchall()
+        connection.commit()
+        check = False
+        for r in result:
+            if file_name == r[1]:
+                check = True
+        # if file does not exists process to create a new empty file
+        if not check:
+            cursor = connection.cursor()
+            max_id = "select max(Id) from folder"
+            cursor.execute(max_id)
+            result = cursor.fetchall()
+            connection.commit()
+            new_dir_folder_table = """INSERT INTO folder
+                                      (id,parent_id,path,folder_name,file_name,is_folder, is_file) VALUES 
+                                      (%s,%s,%s,%s,%s,%s,%s)"""
+            new_dir_file_table = """ INSERT INTO files
+                                      (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
+                                      (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
+            insert_folder_tuple = (
+                str(result[0][0] + 1), str(parent_id), str(pwd), '', str(file_name), str(0), str(1))
+            res = cursor.execute(new_dir_folder_table, insert_folder_tuple)
+            connection.commit()
+            insert_files_tuple = (
+                str(result[0][0] + 1), str(33204), str(1), str(1000), str(1000), str(int(time.time())),
+                str(int(time.time())),
+                str(int(time.time())), str(0), 'file')
+            res = cursor.execute(new_dir_file_table, insert_files_tuple)
+            connection.commit()
+            print("Successfully created a new file:", file_name)
+        else:
+            print("touch : cannot create file :‘" + file_name + "’: File exists")
+
+    except mysql.connector.Error as error:
+        print("Failed connecting to Database with error :{0}".format(error))
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+# function to delete a file or delete whole directory recursively using rm command just like in Linux systems
+def delete_directory(pwd=None, parent_id=None, command=None):
     cmd = command.split()
     if len(cmd) == 2:
         file_name = cmd[1]
@@ -437,7 +498,7 @@ def delete_directory(pwd=None,parent_id=None,command=None):
                     check = True
             if check:
                 # delete file from folders table
-                delete_file_query_Q1 ="""delete from folder where id = %s"""
+                delete_file_query_Q1 = """delete from folder where id = %s"""
                 cursor = connection.cursor()
                 cursor.execute(delete_file_query_Q1, (id,))
                 connection.commit()
@@ -457,7 +518,7 @@ def delete_directory(pwd=None,parent_id=None,command=None):
                 cursor.close()
                 connection.close()
 
-    elif len(cmd) >2 :
+    elif len(cmd) > 2:
         if cmd[1] == '-r':
             folder_name = cmd[2]
             try:
@@ -509,12 +570,42 @@ def delete_directory(pwd=None,parent_id=None,command=None):
                     connection.close()
 
 
-def create_touch_file(33188):
-    pass
+# function to execute any executables available in current directory
+def execute_executable(pwd, parent_id, command):
+    try:
+        connection = mysql.connector.connect(host = 'localhost',
+                                             database = 'filesys',
+                                             user = 'filesys',
+                                             password = 'asdfgh123')
+        cursor = connection.cursor()
+        # check if a file exists with the same name
+        check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
+        cursor.execute(check_file_query, (parent_id,))
+        result = cursor.fetchall()
+        connection.commit()
+        check = False
+        for r in result:
+            if command == r[1]:
+                check = True
+        if check :
+            pass
+
+
+
+    except mysql.connector.Error as error:
+        print("Failed connecting to Database with error :{0}".format(error))
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
 
 
 user = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "4": "sync", "5": "games", "6": "man", "7": "lp",
-        "8": "mail", "9": "news", "10": "uucp", "13": "proxy", "30": "dip", "33": "www-data", "34": "backup", "38": "list",
+        "8": "mail", "9": "news", "10": "uucp", "13": "proxy", "30": "dip", "33": "www-data", "34": "backup",
+        "38": "list",
         "39": "irc", "41": "gnats", "65534": "nobody", "100": "systemd-network", "101": "systemd-resolve",
         "102": "syslog", "103": "messagebus", "104": "_apt", "105": "uuidd", "106": "avahi-autoipd", "107": "usbmux",
         "108": "dnsmasq", "109": "rtkit", "110": "cups-pk-helper", "111": "speech-dispatcher", "112": "whoopsie",
@@ -522,7 +613,8 @@ user = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "4": "sync", "5": "g
         "119": "geoclue", "120": "gnome-initial-setup", "121": "gdm", "1000": "sai", "122": "mysql", "999": "mssql",
         "123": "gitlog", "124": "gitdaemon"}
 group = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "65534": "sync", "60": "games", "12": "man", "7": "lp",
-         "8": "mail", "9": "news", "10": "uucp", "13": "proxy", "30": "dip", "33": "www-data", "34": "backup", "38": "list",
+         "8": "mail", "9": "news", "10": "uucp", "13": "proxy", "30": "dip", "33": "www-data", "34": "backup",
+         "38": "list",
          "39": "irc", "41": "gnats", "65534": "nobody", "102": "systemd-network", "103": "systemd-resolve",
          "106": "syslog", "107": "messagebus", "65534": "_apt", "111": "uuidd", "112": "avahi-autoipd", "46": "usbmux",
          "65534": "dnsmasq", "114": "rtkit", "116": "cups-pk-helper", "29": "speech-dispatcher", "117": "whoopsie",
@@ -554,8 +646,10 @@ while True:
     elif cmd[0].strip() == 'grep':
         grep_function(pwd, command)
     elif cmd[0] == 'mkdir':
-        new_directory(pwd,parent_id,cmd[1])
+        new_directory(pwd, parent_id, cmd[1])
     elif cmd[0] == 'rm':
         delete_directory(pwd, parent_id, command)
+    elif cmd[0] == 'touch':
+        create_touch_file(pwd, parent_id, command)
     else:
         print(command, ": command not found.You can use commands pwd, cd, ls, find and grep")
