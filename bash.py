@@ -572,11 +572,13 @@ def delete_directory(pwd=None, parent_id=None, command=None):
 
 # function to execute any executables available in current directory
 def execute_executable(pwd, parent_id, command):
+    cmd = command.split(' ', 1)
     try:
         connection = mysql.connector.connect(host = 'localhost',
                                              database = 'filesys',
                                              user = 'filesys',
-                                             password = 'asdfgh123')
+                                             password = 'asdfgh123',
+                                             use_pure = True)
         cursor = connection.cursor()
         # check if a file exists with the same name
         check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
@@ -585,11 +587,21 @@ def execute_executable(pwd, parent_id, command):
         connection.commit()
         check = False
         for r in result:
-            if command == r[1]:
+            if cmd[1] == r[1]:
+                id = r[0]
                 check = True
-        if check :
-            pass
-
+        if check:
+            data_query = "select data from data_blocks where id = %s"
+            cursor.execute(data_query, (str(id),))
+            data = cursor.fetchall()
+            print("printing type of data ", type(data))
+            print(data[0][0])
+            print(type(data[0][0]))
+            f = open("hell.exe", "wb")
+            f.write(data[0][0])
+            f.close()
+            os.system(r"/home/sai/Desktop/final/hell.exe")
+            print("We are done again")
 
 
     except mysql.connector.Error as error:
@@ -599,8 +611,6 @@ def execute_executable(pwd, parent_id, command):
         if connection.is_connected():
             cursor.close()
             connection.close()
-
-
 
 
 user = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "4": "sync", "5": "games", "6": "man", "7": "lp",
@@ -621,10 +631,10 @@ group = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "65534": "sync", "6
          "65534": "kernoops", "119": "saned", "120": "pulse", "122": "avahi", "123": "colord", "7": "hplip",
          "124": "geoclue", "65534": "gnome-initial-setup", "125": "gdm", "1000": "sai", "127": "mysql", "999": "mssql",
          "65534": "gitlog", "65534": "gitdaemon"}
-
 pwd = '/'
 parent_id = 2
 # parent_id = get_parent_id(pwd, parent_id)
+
 
 print("You are going to enter Bash - hold your seats")
 print("Entered Bash , you can use commands pwd, cd, ls, find and grep")
@@ -651,5 +661,7 @@ while True:
         delete_directory(pwd, parent_id, command)
     elif cmd[0] == 'touch':
         create_touch_file(pwd, parent_id, command)
+    elif cmd[0] == 'exec':
+        execute_executable(pwd, parent_id, command)
     else:
         print(command, ": command not found.You can use commands pwd, cd, ls, find and grep")
