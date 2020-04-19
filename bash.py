@@ -1,4 +1,5 @@
 import os
+import subprocess
 from os import listdir
 from os import stat
 import time
@@ -399,12 +400,12 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
         if not check_result:
             # print(type(str(int(max_id) + 1)))
             insert_folder_tuple = (
-            str(result[0][0] + 1), str(parent_id), str(pwd + dir_name), str(dir_name), '', str(1), str(0))
+                str(result[0][0] + 1), str(parent_id), str(pwd + dir_name), str(dir_name), '', str(1), str(0))
             res = cursor.execute(new_dir_folder_table, insert_folder_tuple)
             connection.commit()
             insert_files_tuple = (
-            str(result[0][0] + 1), str(16877), str(1), str(1000), str(1000), str(int(time.time())),
-            str(int(time.time())), str(int(time.time())), str(4096), 'fodler')
+                str(result[0][0] + 1), str(16877), str(1), str(1000), str(1000), str(int(time.time())),
+                str(int(time.time())), str(int(time.time())), str(4096), 'fodler')
             res = cursor.execute(new_dir_file_table, insert_files_tuple)
             connection.commit()
             print("Successfully created a new directory :", dir_name)
@@ -507,6 +508,10 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                 delete_file_query_Q2 = """delete from files where id = %s"""
                 cursor.execute(delete_file_query_Q2, (id,))
                 connection.commit()
+                cursor = connection.cursor()
+                delete_file_query_Q3 = """delete from data_blocks where id = %s"""
+                cursor.execute(delete_file_query_Q3, (id,))
+                connection.commit()
             else:
                 print("no such file to be deleted :", file_name)
 
@@ -538,6 +543,8 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                         id = r[0]
                         check = True
                 if check:
+                    # selecting all the files and folder in the folder to delete them recursively
+                    select_file_ids = """select id from folder where parent_id = %s"""
                     # delete folder from folders tables
                     delete_folder_Q1 = """delete from folder where id = %s """
                     # delete folder from files tables
@@ -546,6 +553,13 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                     delete_folder_Q3 = """delete from folder where parent_id = %s"""
                     # delete folder files from files table
                     delete_folder_Q4 = """delete from files where id not in (select id from folder)"""
+                    # delete files from data_blocks table
+                    delete_folder_Q5 = """delete from data_blocks where id = %s """
+
+                    cursor = connection.cursor()
+                    cursor.execute(select_file_ids, (id,))
+                    file_ids_result = cursor.fetchall()
+                    connection.commit()
                     cursor = connection.cursor()
                     cursor.execute(delete_folder_Q1, (id,))
                     connection.commit()
@@ -558,6 +572,13 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                     cursor = connection.cursor()
                     cursor.execute(delete_folder_Q4)
                     connection.commit()
+                    for f in file_ids_result:
+                        cursor = connection.cursor()
+                        print(type(f[0]))
+                        print(f)
+                        cursor.execute(delete_folder_Q5, (int(f[0]),))
+                        connection.commit()
+
                 else:
                     print("no such directory to be deleted :", folder_name)
 
@@ -589,20 +610,25 @@ def execute_executable(pwd, parent_id, command):
         for r in result:
             if cmd[1] == r[1]:
                 id = r[0]
+                file_name = cmd[1]
                 check = True
         if check:
             data_query = "select data from data_blocks where id = %s"
             cursor.execute(data_query, (str(id),))
             data = cursor.fetchall()
-            print("printing type of data ", type(data))
-            print(data[0][0])
-            print(type(data[0][0]))
-            f = open("hell.exe", "wb")
+            # print("printing type of data ", type(data))
+            # print(data[0][0])
+            # print(type(data[0][0]))
+            f = open(file_name + '.exe', "wb+")
             f.write(data[0][0])
             f.close()
-            os.system(r"/home/sai/Desktop/final/hell.exe")
-            print("We are done again")
+            # os.chmod(file_name, 0o777)
+            cwd = os.getcwd()
+            p = subprocess.Popen('./' + file_name + '.exe')
+            p.wait()
 
+            # os.system(r"/home/sai/Desktop/final/hell.exe")
+            print("We are done again")
 
     except mysql.connector.Error as error:
         print("Failed connecting to Database with error :{0}".format(error))
