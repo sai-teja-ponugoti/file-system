@@ -1,5 +1,5 @@
 import os
-from os import listdir
+from os import listdir, stat
 import time
 import mysql.connector
 from mysql.connector import Error
@@ -13,8 +13,9 @@ mime = MimeTypes()
 def convertToBinaryData(filename):
     # Convert digital data to binary format
     try:
-        with open(filename, 'rb') as file:
+        with open(filename, 'rb+') as file:
             binaryData = file.read()
+            # print(binaryData)
         return binaryData
 
     except (OSError, IOError, MemoryError) as e:
@@ -46,10 +47,10 @@ def insertBLOB(id, data):
         insert_blob_tuple = (id, 1, data)
         result = cursor.execute(sql_insert_blob_query, insert_blob_tuple)
         connection.commit()
-        print("Image and file inserted successfully as a BLOB into python_employee table", result)
+        print("Image and file inserted successfully as a BLOB into data_blocks table", result)
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed inserting BLOB data into data_blocks table MySQL table {}".format(error))
 
     finally:
         if connection.is_connected():
@@ -58,7 +59,7 @@ def insertBLOB(id, data):
             print("MySQL connection is closed")
 
 
-def insert_folders(folder_id, parent_id, path, folder_name, file_name, is_folder, is_file):
+def insert_folders(folder_id, parent_id, path, folder_name, file_name, LinkId):
     print("Inserting into Folders table {0} {1} {2}".format(path, folder_name, file_name))
     try:
         connection = mysql.connector.connect(host = 'localhost',
@@ -67,17 +68,17 @@ def insert_folders(folder_id, parent_id, path, folder_name, file_name, is_folder
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        sql_insert_blob_query = """ INSERT INTO folder
-                                  (id,parent_id,path,folder_name,file_name,is_folder, is_file) VALUES 
-                                  (%s,%s,%s,%s,%s,%s,%s)"""
+        sql_insert_folder_query = """ INSERT INTO folder
+                                  (id,parent_id,path,folder_name,file_name, LinkId) VALUES 
+                                  (%s,%s,%s,%s,%s,%s)"""
 
-        insert_folder_tuple = (folder_id, parent_id, path, folder_name, file_name, is_folder, is_file)
-        result = cursor.execute(sql_insert_blob_query, insert_folder_tuple)
+        insert_folder_tuple = (folder_id, parent_id, path, folder_name, file_name, LinkId)
+        result = cursor.execute(sql_insert_folder_query, insert_folder_tuple)
         connection.commit()
         print("inserted successfully into Folders table {0} {1} {2}".format(path, folder_name, file_name))
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed inserting BLOB data into folder MySQL table {}".format(error))
 
     finally:
         if connection.is_connected():
@@ -105,7 +106,7 @@ def insert_files(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file
         print("inserted successfully into Files table {0}".format(file_id))
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed inserting BLOB data into files MySQL table {}".format(error))
 
     finally:
         if connection.is_connected():
@@ -114,7 +115,30 @@ def insert_files(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file
             print("MySQL connection is closed")
 
 
-path = '/proc'
+def get_highest_id():
+    try:
+        connection = mysql.connector.connect(host = 'localhost',
+                                             database = 'filesys',
+                                             user = 'filesys',
+                                             password = 'asdfgh123')
+        cursor = connection.cursor()
+        max_id = "select max(Id) from folder"
+        cursor.execute(max_id)
+        result = cursor.fetchall()
+        connection.commit()
+
+    except mysql.connector.Error as error:
+        print("Failed connecting to Database with error :{0}".format(error))
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+            return result
+
+
+path = '/'
+
 folders = []
 files = []
 root = []
@@ -129,6 +153,8 @@ is_file = 1
 # print(os.stat('/home'))
 # print(os.stat('/home/sai'))
 
+
+# function to initiate loading
 def writing_db(path):
     for r, d, f in os.walk(path):
         root.append(r)
@@ -150,106 +176,86 @@ def writing_db(path):
         all_objects.append([root, folders, files])
         # if 'git-daemon' not in r and 'libc-bin' not in r  and 'libxml2' not in r and '48x48' not in r  and 'fdl'
         # not in r:
-        if '8689' not in r and '8592' not in r and '/media' not in r and '/home' not in r:
+        if '8689' not in r and '8592' not in r and '/media' not in r:
             for fol in f:
-                # print(os.path.getsize(os.path.join(r, fol)))
-                # print("printing file name {0}".format(fol))
-                # print("printing join path name {0}".format(os.path.join(r, fol)))
-                # print("printing inode number {0}".format(os.stat(os.path.join(r, fol)).st_ino))
-                # print(os.path.join(r, fol))
-                # print(os.stat(os.path.join(r, fol)))
+                max_id = get_highest_id()[0][0] + 1
+                os.chdir(os.path.join(r))
                 try:
-                    insert_files(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
-                                 os.stat(os.path.join(r, fol)).st_nlink, os.stat(r).st_uid, os.stat(r).st_gid,
-                                 os.stat(r).st_atime, os.stat(r).st_mtime, os.stat(r).st_ctime,
-                                 os.stat(os.path.join(r, fol)).st_size,
-                                 str(mime.guess_type(os.path.join(r, fol))))
+                    if not os.path.islink(fol):
+                        insert_files(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                                     os.stat(os.path.join(r, fol)).st_nlink, os.stat(r).st_uid, os.stat(r).st_gid,
+                                     os.stat(r).st_atime, os.stat(r).st_mtime, os.stat(r).st_ctime,
+                                     os.stat(os.path.join(r, fol)).st_size,
+                                     str(mime.guess_type(os.path.join(r, fol))))
+                    else:
+                        print("True for ", fol)
+                        print("True for ", os.path.join(r))
+                        insert_files(max_id, str(99999),
+                                     str(1), os.stat(r).st_uid, os.stat(r).st_gid,
+                                     str(int(time.time())),
+                                     str(int(time.time())),
+                                     str(int(time.time())), str(5), 'file')
                 except OSError as e:
                     print(e.errno)
                 #
                 try:
-                    insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, r, "", fol, 0, 1)
+                    if os.path.islink(fol):
+                        print("True for ", fol)
+                        print("True for ", os.path.join(r))
+                        insert_folders(max_id, os.stat(r).st_ino, r, "", fol,
+                                       os.stat(os.path.join(r, fol)).st_ino)
+                    else:
+                        insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, r, "", fol, str(0))
                 except OSError as e:
                     print(e.errno)
                 try:
-                    if fol != 'swapfile' and fol != 'initctl':
-                        insertBLOB(os.stat(os.path.join(r, fol)).st_ino, convertToBinaryData(os.path.join(r, fol)))
+                    if os.path.islink(fol):
+                        print("True for ", fol)
+                        print("True for ", os.path.join(r))
+                        if fol != 'swapfile' and fol != 'initctl':
+                            insertBLOB(max_id, convertToBinaryData(os.path.join(r, fol)))
+                    else:
+                        if fol != 'swapfile' and fol != 'initctl':
+                            insertBLOB(os.stat(os.path.join(r, fol)).st_ino, convertToBinaryData(os.path.join(r, fol)))
                 # writing_db(os.path.join(r, fol))
                 except OSError as e:
                     print(e.errno)
 
             for fol in d:
-                print(os.path.join(r, fol))
-                # print(os.stat(os.path.join(r, fol)))
+                # print(os.path)
+                max_id = get_highest_id()[0][0] + 1
+                os.chdir(os.path.join(r))
+                if os.path.islink(fol):
+                    print("True for ", fol)
+                    print("True for ", os.path.join(r))
                 try:
-                    insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, os.path.join(r, fol), fol,
-                                   "", 1, 0)
+                    if os.path.islink(fol):
+                        print("True for ", fol)
+                        print("True for ", os.path.join(r))
+                        insert_folders(max_id,stat(r).st_ino,os.path.join(r, fol), fol, "",
+                                       os.stat(os.path.join(r, fol)).st_ino)
+                    else:
+                        insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, os.path.join(r, fol),
+                                       fol, "", str(0))
                 except OSError as e:
                     print(e.errno)
                 try:
-                    insert_files(os.stat(os.path.join(r, fol)).st_ino, os.stat(os.path.join(r, fol)).st_mode,
-                                 os.stat(os.path.join(r, fol)).st_nlink,
-                                 os.stat(r).st_uid, os.stat(r).st_gid, os.stat(r).st_atime, os.stat(r).st_mtime,
-                                 os.stat(r).st_ctime, os.stat(os.path.join(r, fol)).st_size, "folder")
+                    if os.path.islink(fol):
+                        print("True for ", fol)
+                        print("True for ", os.path.join(r))
+                        insert_files(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                                     os.stat(os.path.join(r, fol)).st_nlink, os.stat(r).st_uid, os.stat(r).st_gid,
+                                     os.stat(r).st_atime, os.stat(r).st_mtime, os.stat(r).st_ctime,
+                                     os.stat(os.path.join(r, fol)).st_size,
+                                     str(mime.guess_type(os.path.join(r, fol))))
+                    else:
+                        insert_files(os.stat(os.path.join(r, fol)).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                                     os.stat(os.path.join(r, fol)).st_nlink,
+                                     os.stat(r).st_uid, os.stat(r).st_gid, os.stat(r).st_atime, os.stat(r).st_mtime,
+                                     os.stat(r).st_ctime, os.stat(os.path.join(r, fol)).st_size, "folder")
                 except OSError as e:
                     print(e.errno)
-            # writing_db(os.path.join(r, fol))
 
-
-# print("printing folders")
-# for f in folders:
-#     print(f)
-#
-# print("printing files")
-# for f in files:
-#     print(f)
-#
-# print("printing roots")
-# for f in root:
-#     print(f)
-#
-# print("printing all objects")
-# for f in all_objects:
-#     print(f)
-#
-# print(len(folders))
-# print(len(files))
-# print(len(root))
-# print(len(all_objects))
 
 writing_db(path)
 print("we are done")
-#
-# for obj in all_objects:
-#     # for n in range(len(obj[1])):
-#     # insert_folders(os.stat(all_objects[n+1][0]).st_ino, os.stat(obj[0]).st_ino, all_objects[n+1][0], obj[1][n])
-#     # folder_id, parent_id, folder_path, folder_name
-#     path = obj[0]
-#     for l in obj:
-#         # print(type(l))
-#         if len(l) != 0 and type(l) != str:
-#             for file in l:
-#                 # print(os.path.join(path, file))
-#                 # print('File         :', file)
-#                 # print('Access time  :',
-#                 #       datetime.datetime.strptime(time.ctime(os.path.getatime(os.path.join(path, file))),
-#                 #                                  "%a %b %d %H:%M:%S %Y"))
-#                 # print('Modified time:',
-#                 #       datetime.datetime.strptime(time.ctime(os.path.getmtime(os.path.join(path, file))),
-#                 #                                  "%a %b %d %H:%M:%S %Y"))
-#                 # print('Change time  :',
-#                 #       datetime.datetime.strptime(time.ctime(os.path.getctime(os.path.join(path, file))),
-#                 #                                  "%a %b %d %H:%M:%S %Y"))
-#                 # print('Size         :', os.path.getsize(os.path.join(path, file)))
-#                 print(os.stat(os.path.join(path, file)))
-#                 print(mime.guess_type(os.path.join(path, file)))
-#         else:
-#             if len(l) != 0:
-#                 # print('File         :', l)
-#                 # print('Access time  :', time.ctime(os.path.getatime(l)))
-#                 # print('Modified time:', time.ctime(os.path.getmtime(l)))
-#                 # print('Change time  :', time.ctime(os.path.getctime(l)))
-#                 # print('Size         :', os.path.getsize(l))
-#                 # print('created time  :', time.ctime(os.stat(l)[8]))
-#                 print(os.stat(l))
-#                 print(mime.guess_type(l))
