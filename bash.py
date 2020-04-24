@@ -110,7 +110,7 @@ def result_to_print(r=None, format=None):
     if format == 'ls':
         if r[7] == 0:
             binary = bin(r[0])
-            if binary[2] == '0':
+            if binary[3] == '1':
                 permission += '-'
             else:
                 permission += 'd'
@@ -154,7 +154,7 @@ def result_to_print(r=None, format=None):
 
     elif format == 'find':
         binary = bin(r[0])
-        if binary[2] == '0':
+        if binary[3] == '1':
             permission += '-'
         else:
             permission += 'd'
@@ -219,7 +219,14 @@ def lsl_function(parent_id, user, group):
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            files_list_print.append(result_to_print(r, 'ls'))
+            if int(r[0]) > 30000 and int(r[0]) != 99999:
+                new_list = []
+                new_list.append(int(r[0]) - 20000)
+                for k in r[1:]:
+                    new_list.append(k)
+                files_list_print.append(result_to_print(new_list, 'ls'))
+            else:
+                files_list_print.append(result_to_print(r, 'ls'))
 
         # for fol in folders_list:
         #     print(colored(fol, 'blue'))
@@ -371,7 +378,14 @@ def find_function(command=None):
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            re = result_to_print(r, 'find')
+            if int(r[0]) > 30000 and int(r[0]) != 99999:
+                new_list = []
+                new_list.append(int(r[0]) - 20000)
+                for k in r[1:]:
+                    new_list.append(k)
+                re = result_to_print(new_list, 'find')
+            else:
+                re = result_to_print(r, 'find')
             if search_path in re[-1]:
                 result_list_print.append(re)
         cursor.execute(find_query_folder, (name,))
@@ -433,8 +447,8 @@ def grep_function(pwd, command):
                 # print(data[0])
                 # print(data[0][0].splitlines())
                 for l in range(0, len(data[0][0].splitlines())):
-                    if search_pattern in data[0][0].splitlines()[l]:
-                        print("line {0} : {1} in file : {2}".rjust(8).format(l, data[0][0].splitlines()[l], re[1]))
+                    if search_pattern.encode() in data[0][0].splitlines()[l]:
+                        print("line {0} : {1} in file : {2}".rjust(8).format(l, data[0][0].decode('utf8').splitlines()[l], re[1]))
 
     except mysql.connector.Error as error:
         print("Failed inserting BLOB data into MySQL table {}".format(error))
@@ -459,8 +473,8 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
         result = cursor.fetchall()
         connection.commit()
         new_dir_folder_table = """INSERT INTO folder
-                                  (id,parent_id,path,folder_name,file_name,is_folder, is_file) VALUES 
-                                  (%s,%s,%s,%s,%s,%s,%s)"""
+                                  (id,parent_id,path,folder_name,file_name,LinkId) VALUES 
+                                  (%s,%s,%s,%s,%s,%s)"""
         new_dir_file_table = """ INSERT INTO files
                                   (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
                                   (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
@@ -474,8 +488,12 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
                 check_result = True
         if not check_result:
             # print(type(str(int(max_id) + 1)))
+            if pwd != '/':
+                pat = pwd + '/' + dir_name
+            elif pwd == '/':
+                pat = pwd + dir_name
             insert_folder_tuple = (
-                str(result[0][0] + 1), str(parent_id), str(pwd + dir_name), str(dir_name), '', str(1), str(0))
+                str(result[0][0] + 1), str(parent_id), str(pat), str(dir_name), '', str(0))
             res = cursor.execute(new_dir_folder_table, insert_folder_tuple)
             connection.commit()
             insert_files_tuple = (
@@ -523,13 +541,13 @@ def create_touch_file(pwd, parent_id, command):
             result = cursor.fetchall()
             connection.commit()
             new_dir_folder_table = """INSERT INTO folder
-                                      (id,parent_id,path,folder_name,file_name,is_folder, is_file) VALUES 
-                                      (%s,%s,%s,%s,%s,%s,%s)"""
+                                      (id,parent_id,path,folder_name,file_name,LinkId) VALUES 
+                                      (%s,%s,%s,%s,%s,%s)"""
             new_dir_file_table = """ INSERT INTO files
                                       (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
                                       (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
             insert_folder_tuple = (
-                str(result[0][0] + 1), str(parent_id), str(pwd), '', str(file_name), str(0), str(1))
+                str(result[0][0] + 1), str(parent_id), str(pwd), '', str(file_name), str(0))
             res = cursor.execute(new_dir_folder_table, insert_folder_tuple)
             connection.commit()
             insert_files_tuple = (
@@ -798,16 +816,12 @@ print("You are going to enter Bash - hold your seats")
 print("Entered Bash , you can use commands pwd, cd, ls, find and grep")
 while True:
     try:
-        print(colored("localhost:-" + pwd + " :~$ ", 'yellow'), end = '')
+        print(colored("DB@filesystem:-" + pwd + " :~$ ", 'yellow'), end = '')
         command = input()
         cmd = command.split(' ')
         if len(cmd) >= 2:
-            if cmd[0].strip() == 'ls' and len(cmd) == 1:
-                ls_function(parent_id)
-            elif cmd[0].strip() == 'ls' and len(cmd) == 2:
+            if cmd[0].strip() == 'ls' and len(cmd) == 2:
                 lsl_function(parent_id, user, group)
-            elif cmd[0].strip() == 'pwd':
-                pwd_function(pwd)
             elif cmd[0].strip() == 'cd':
                 pwd, parent_id = cd_function(pwd, command, parent_id)
                 # print(pwd, " and ", parent_id)
@@ -828,8 +842,13 @@ while True:
             else:
                 execute_executable_PATH(PATH, pwd, parent_id, command)
         elif len(cmd) == 1:
-            if cmd[0][0:2] == './':
+            if cmd[0].strip() == 'ls' and len(cmd) == 1:
+                ls_function(parent_id)
+            elif cmd[0].strip() == 'pwd':
+                pwd_function(pwd)
+            elif cmd[0][0:2] == './':
                 execute_executable_pwd(pwd, parent_id, command)
+
         else:
             print(command, ": command not found.You can use commands pwd, cd, ls, find and grep")
 
