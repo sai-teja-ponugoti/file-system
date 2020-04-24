@@ -77,48 +77,121 @@ def ls_function(parentid):
             connection.close()
 
 
-def result_to_print(r=None):
+def get_file_name(id=None):
+    try:
+        connection = mysql.connector.connect(host = 'localhost',
+                                             database = 'filesys',
+                                             user = 'filesys',
+                                             password = 'asdfgh123')
+
+        cursor = connection.cursor()
+        file_names_sql = """ select file_name as name from folder where id = %s and file_name != ''"""
+        cursor.execute(file_names_sql, (id,))
+        result = cursor.fetchall()
+        connection.commit()
+        return_name = ''
+        for r in result:
+            return_name = r[0]
+            break;
+
+    except mysql.connector.Error as error:
+        print("Failed inserting BLOB data into MySQL table {}".format(error))
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+            return return_name
+
+
+def result_to_print(r=None, format=None):
     print_list = []
     permission = ''
-    binary = bin(r[0])
-    if binary[2] == '0':
-        permission += '-'
-    else:
-        permission += 'd'
-    for i in range(-9, -1):
-        if i in [-9, -6, -3]:
-            # print(binary[i])
-            # print(type(binary[i]))
-            if binary[i] == '1':
-                permission += 'r'
-            else:
+    if format == 'ls':
+        if r[7] == 0:
+            binary = bin(r[0])
+            if binary[2] == '0':
                 permission += '-'
-        if i in [-8, -5, -2]:
-            if binary[i] == '1':
-                permission += 'w'
             else:
-                permission += '-'
-        if i in [-7, -4, -1]:
-            if binary[i] == '1':
-                permission += 'x'
-            else:
-                permission += '-'
+                permission += 'd'
+            for i in range(-9, 0):
+                if i in [-9, -6, -3]:
+                    if binary[i] == '1':
+                        permission += 'r'
+                    else:
+                        permission += '-'
+                if i in [-8, -5, -2]:
+                    if binary[i] == '1':
+                        permission += 'w'
+                    else:
+                        permission += '-'
+                if i in [-7, -4, -1]:
+                    if binary[i] == '1':
+                        permission += 'x'
+                    else:
+                        permission += '-'
+        else:
+            permission = 'lrwxrwxrwx'
 
-    print_list.append(permission)
-    # permission += ' ' + str(r[1])
-    print_list.append(str(r[1]))
-    # permission += ' ' + user[str(r[2])]
-    print_list.append(user[str(r[2])])
-    # permission += ' ' + group[str(r[3])]
-    print_list.append(group[str(r[3])])
-    # permission += ' ' + str(r[4])
-    print_list.append(str(r[4]))
-    # permission += ' ' + str(time.ctime(r[5]))
-    print_list.append(str(time.ctime(r[5])))
-    # permission += ' ' + str(r[6])
-    print_list.append(str(r[6]))
-    # folders_list.append(permission)
-    return print_list
+        print_list.append(permission)
+        # permission += ' ' + str(r[1])
+        print_list.append(str(r[1]))
+        # permission += ' ' + user[str(r[2])]
+        print_list.append(user[str(r[2])])
+        # permission += ' ' + group[str(r[3])]
+        print_list.append(group[str(r[3])])
+        # permission += ' ' + str(r[4])
+        print_list.append(str(r[4]))
+        # permission += ' ' + str(time.ctime(r[5]))
+        print_list.append(str(time.ctime(r[5])))
+        # permission += ' ' + str(r[6])
+        if r[7] == 0:
+            print_list.append(str(r[6]))
+        else:
+            print_list.append(str(r[6] + "->" + get_file_name(r[7])))
+        # folders_list.append(permission)
+        return print_list
+
+    elif format == 'find':
+        binary = bin(r[0])
+        if binary[2] == '0':
+            permission += '-'
+        else:
+            permission += 'd'
+        for i in range(-9, 0):
+            if i in [-9, -6, -3]:
+                # print(binary[i])
+                # print(type(binary[i]))
+                if binary[i] == '1':
+                    permission += 'r'
+                else:
+                    permission += '-'
+            if i in [-8, -5, -2]:
+                if binary[i] == '1':
+                    permission += 'w'
+                else:
+                    permission += '-'
+            if i in [-7, -4, -1]:
+                if binary[i] == '1':
+                    permission += 'x'
+                else:
+                    permission += '-'
+
+        print_list.append(permission)
+        # permission += ' ' + str(r[1])
+        print_list.append(str(r[1]))
+        # permission += ' ' + user[str(r[2])]
+        print_list.append(user[str(r[2])])
+        # permission += ' ' + group[str(r[3])]
+        print_list.append(group[str(r[3])])
+        # permission += ' ' + str(r[4])
+        print_list.append(str(r[4]))
+        # permission += ' ' + str(time.ctime(r[5]))
+        print_list.append(str(time.ctime(r[5])))
+        # permission += ' ' + str(r[6])
+        print_list.append(str(r[6]))
+        # folders_list.append(permission)
+        return print_list
 
 
 def lsl_function(parent_id, user, group):
@@ -133,21 +206,20 @@ def lsl_function(parent_id, user, group):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        folder_names_sql = """select mode,nlink,uid,gid,size,mtime,folder_name from folder  join files on  files.id = folder.id 
+        folder_names_sql = """select mode,nlink,uid,gid,size,mtime,folder_name,LinkId from folder  join files on  files.id = folder.id 
         where parent_id = %s and folder_name != ''"""
-        file_names_sql = """ select mode,nlink,uid,gid,size,mtime,file_name from folder  join files on  files.id = folder.id 
+        file_names_sql = """ select mode,nlink,uid,gid,size,mtime,file_name,LinkId from folder  join files on  files.id = folder.id 
         where parent_id = %s and file_name != ''"""
         cursor.execute(folder_names_sql, (parent_id,))
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            folders_list_print.append(result_to_print(r))
-
+            folders_list_print.append(result_to_print(r, 'ls'))
         cursor.execute(file_names_sql, (parent_id,))
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            files_list_print.append(result_to_print(r))
+            files_list_print.append(result_to_print(r, 'ls'))
 
         # for fol in folders_list:
         #     print(colored(fol, 'blue'))
@@ -190,11 +262,11 @@ def cd_function(pwd=None, command=None, parent_id=None):
 
     """
     c = command.split(' ', 1)
-    if c[1] == '..' and len(c) == 2 and pwd != '/home/sai':
+    if c[1] == '..' and len(c) == 2 and pwd != '/':
         # pwd = pwd.rsplit('/', 1)[0]
         # parent_id = get_parent_id(pwd.rsplit('/', 1)[0])
         return pwd.rsplit('/', 1)[0], get_parent_id(pwd.rsplit('/', 1)[0])
-    elif c[1] == '..' and len(c) == 2 and pwd == '/home/sai':
+    elif c[1] == '..' and len(c) == 2 and pwd == '/':
         print("you are in root folder")
         return pwd, parent_id
     elif c[1] == '.' and len(c) == 2:
@@ -206,7 +278,10 @@ def cd_function(pwd=None, command=None, parent_id=None):
                                                  user = 'filesys',
                                                  password = 'asdfgh123')
             if './' in c[1]:
-                path = pwd + '/' + c[1][2:]
+                if pwd != '/':
+                    path = pwd + '/' + c[1][2:]
+                else:
+                    path = pwd + c[1][2:]
             elif '/' not in c[1]:
                 if pwd != '/':
                     path = pwd + '/' + c[1]
@@ -296,14 +371,14 @@ def find_function(command=None):
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            re = result_to_print(r)
+            re = result_to_print(r, 'find')
             if search_path in re[-1]:
                 result_list_print.append(re)
         cursor.execute(find_query_folder, (name,))
         result = cursor.fetchall()
         connection.commit()
         for r in result:
-            re = result_to_print(r)
+            re = result_to_print(r, 'find')
             if search_path in re[-1]:
                 result_list_print.append(re)
         for res in result_list_print:
@@ -321,11 +396,11 @@ def find_function(command=None):
 
 
 def grep_function(pwd, command):
-    print("reached grep function ")
+    # print("reached grep function ")
     name = command.rsplit(' ', 1)[1]
     search_pattern = command.rsplit(' ', 1)[0].split(' ', 1)[1]
     search_pattern = search_pattern.replace('\"', '')
-    print(name, search_pattern)
+    # print(name, search_pattern)
 
     try:
         connection = mysql.connector.connect(host = 'localhost',
@@ -353,7 +428,7 @@ def grep_function(pwd, command):
                 data_query = "select data from data_blocks where id = %s"
                 cursor.execute(data_query, (str(re[0]),))
                 data = cursor.fetchall()
-                print("printing type of data ", type(data))
+                # print("printing type of data ", type(data))
                 # print(data)
                 # print(data[0])
                 # print(data[0][0].splitlines())
@@ -498,6 +573,9 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                     id = r[0]
                     check = True
             if check:
+                cursor = connection.cursor()
+                cursor.execute("""SET FOREIGN_KEY_CHECKS=0;""")
+                connection.commit()
                 # delete file from folders table
                 delete_file_query_Q1 = """delete from folder where id = %s"""
                 cursor = connection.cursor()
@@ -555,7 +633,9 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                     delete_folder_Q4 = """delete from files where id not in (select id from folder)"""
                     # delete files from data_blocks table
                     delete_folder_Q5 = """delete from data_blocks where id = %s """
-
+                    cursor = connection.cursor()
+                    cursor.execute("""SET FOREIGN_KEY_CHECKS=0;""")
+                    connection.commit()
                     cursor = connection.cursor()
                     cursor.execute(select_file_ids, (id,))
                     file_ids_result = cursor.fetchall()
@@ -574,8 +654,8 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                     connection.commit()
                     for f in file_ids_result:
                         cursor = connection.cursor()
-                        print(type(f[0]))
-                        print(f)
+                        # print(type(f[0]))
+                        # print(f)
                         cursor.execute(delete_folder_Q5, (int(f[0]),))
                         connection.commit()
 
@@ -592,8 +672,8 @@ def delete_directory(pwd=None, parent_id=None, command=None):
 
 
 # function to execute any executables available in current directory
-def execute_executable(pwd, parent_id, command):
-    cmd = command.split(' ', 1)
+def execute_executable_pwd(pwd, parent_id, command):
+    # cmd = command.split(' ', 1)
     try:
         connection = mysql.connector.connect(host = 'localhost',
                                              database = 'filesys',
@@ -608,9 +688,9 @@ def execute_executable(pwd, parent_id, command):
         connection.commit()
         check = False
         for r in result:
-            if cmd[1] == r[1]:
+            if command[2:] == r[1]:
                 id = r[0]
-                file_name = cmd[1]
+                file_name = command[2:]
                 check = True
         if check:
             data_query = "select data from data_blocks where id = %s"
@@ -619,16 +699,66 @@ def execute_executable(pwd, parent_id, command):
             # print("printing type of data ", type(data))
             # print(data[0][0])
             # print(type(data[0][0]))
-            f = open(file_name + '.exe', "wb+")
+            f = open(file_name, "wb+")
             f.write(data[0][0])
             f.close()
-            # os.chmod(file_name, 0o777)
-            cwd = os.getcwd()
-            p = subprocess.Popen('./' + file_name + '.exe')
+            os.chdir(pwd)
+            os.chmod(file_name, 0o777)
+            # cwd = os.getcwd()
+            p = subprocess.Popen('./' + file_name)
             p.wait()
 
             # os.system(r"/home/sai/Desktop/final/hell.exe")
-            print("We are done again")
+            # print("We are done again")
+
+    except mysql.connector.Error as error:
+        print("Failed connecting to Database with error :{0}".format(error))
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+def execute_executable_PATH(PATH, pwd, parent_id, command):
+    cmd = command.split(' ')
+    try:
+        connection = mysql.connector.connect(host = 'localhost',
+                                             database = 'filesys',
+                                             user = 'filesys',
+                                             password = 'asdfgh123',
+                                             use_pure = True)
+        for p in PATH:
+            cursor = connection.cursor()
+            check_file_query = "select id,file_name from folder where path = %s and file_name != ''"
+            cursor.execute(check_file_query, (p,))
+            result = cursor.fetchall()
+            connection.commit()
+            check = False
+            for r in result:
+                if cmd[0] == r[1]:
+                    id = r[0]
+                    file_name = cmd[0]
+                    check = True
+                    break
+            if check:
+                data_query = "select data from data_blocks where id = %s"
+                cursor.execute(data_query, (str(id),))
+                data = cursor.fetchall()
+                # print("printing type of data ", type(data))
+                # print(data[0][0])
+                # print(type(data[0][0]))
+                f = open(file_name, "wb+")
+                f.write(data[0][0])
+                f.close()
+                # os.chdir(pwd)
+                os.chmod(file_name, 0o777)
+                # cwd = os.getcwd()
+                p = subprocess.Popen(cmd)
+                p.wait()
+
+                # os.system(r"/home/sai/Desktop/final/hell.exe")
+                # print("We are done again")
 
     except mysql.connector.Error as error:
         print("Failed connecting to Database with error :{0}".format(error))
@@ -659,35 +789,49 @@ group = {"0": "root", "1": "daemon", "2": "bin", "3": "sys", "65534": "sync", "6
          "65534": "gitlog", "65534": "gitdaemon"}
 pwd = '/'
 parent_id = 2
+PATH = ['/home/sai/.local/bin', '/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin',
+        '/usr/games', '/usr/local/games', '/snap/bin']
 # parent_id = get_parent_id(pwd, parent_id)
 
 
 print("You are going to enter Bash - hold your seats")
 print("Entered Bash , you can use commands pwd, cd, ls, find and grep")
 while True:
-    print(colored("localhost:-" + pwd + " :~$ ", 'yellow'), end = '')
-    command = input()
-    cmd = command.split(' ')
-    if cmd[0].strip() == 'ls' and len(cmd) == 1:
-        ls_function(parent_id)
-    elif cmd[0].strip() == 'ls' and len(cmd) == 2:
-        lsl_function(parent_id, user, group)
-    elif cmd[0].strip() == 'pwd':
-        pwd_function(pwd)
-    elif cmd[0].strip() == 'cd':
-        pwd, parent_id = cd_function(pwd, command, parent_id)
-        # print(pwd, " and ", parent_id)
-    elif cmd[0].strip() == 'find':
-        find_function(command)
-    elif cmd[0].strip() == 'grep':
-        grep_function(pwd, command)
-    elif cmd[0] == 'mkdir':
-        new_directory(pwd, parent_id, cmd[1])
-    elif cmd[0] == 'rm':
-        delete_directory(pwd, parent_id, command)
-    elif cmd[0] == 'touch':
-        create_touch_file(pwd, parent_id, command)
-    elif cmd[0] == 'exec':
-        execute_executable(pwd, parent_id, command)
-    else:
-        print(command, ": command not found.You can use commands pwd, cd, ls, find and grep")
+    try:
+        print(colored("localhost:-" + pwd + " :~$ ", 'yellow'), end = '')
+        command = input()
+        cmd = command.split(' ')
+        if len(cmd) >= 2:
+            if cmd[0].strip() == 'ls' and len(cmd) == 1:
+                ls_function(parent_id)
+            elif cmd[0].strip() == 'ls' and len(cmd) == 2:
+                lsl_function(parent_id, user, group)
+            elif cmd[0].strip() == 'pwd':
+                pwd_function(pwd)
+            elif cmd[0].strip() == 'cd':
+                pwd, parent_id = cd_function(pwd, command, parent_id)
+                # print(pwd, " and ", parent_id)
+            elif cmd[0].strip() == 'find':
+                find_function(command)
+            elif cmd[0].strip() == 'grep':
+                grep_function(pwd, command)
+            elif cmd[0] == 'mkdir':
+                new_directory(pwd, parent_id, cmd[1])
+            elif cmd[0] == 'rm':
+                delete_directory(pwd, parent_id, command)
+            elif cmd[0] == 'touch':
+                create_touch_file(pwd, parent_id, command)
+            elif cmd[0] == 'echo':
+                for p in PATH:
+                    print(p, end = ' :')
+                print()
+            else:
+                execute_executable_PATH(PATH, pwd, parent_id, command)
+        elif len(cmd) == 1:
+            if cmd[0][0:2] == './':
+                execute_executable_pwd(pwd, parent_id, command)
+        else:
+            print(cAddedmmand, ": command not found.You can use commands pwd, cd, ls, find and grep")
+
+    except:
+        print("No such command, please try again")
