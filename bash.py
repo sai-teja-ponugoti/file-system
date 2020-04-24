@@ -831,7 +831,10 @@ while True:
             if cmd[0][0:2] == './':
                 execute_executable_pwd(pwd, parent_id, command)
         else:
-            print(cAddedmmand, ": command not found.You can use commands pwd, cd, ls, find and grep")
+            print(command, ": command not found.You can use commands pwd, cd, ls, find and grep")
 
     except:
         print("No such command, please try again")
+
+    finally:
+        pass
