@@ -29,7 +29,7 @@ def convertToBinaryData(filename):
 
 
 def insertBLOB(id, data):
-    print("Inserting BLOB into python_employee table")
+    print("Inserting BLOB into data_blocks table")
     try:
         connection = mysql.connector.connect(host = 'localhost',
                                              database = 'filesys',
@@ -59,8 +59,8 @@ def insertBLOB(id, data):
             print("MySQL connection is closed")
 
 
-def insert_folders(folder_id, parent_id, path, folder_name, file_name, LinkId):
-    print("Inserting into Folders table {0} {1} {2}".format(path, folder_name, file_name))
+def insert_file(folder_id, parent_id, path, folder_name, file_name, LinkId):
+    print("Inserting into file table {0} {1} {2}".format(path, folder_name, file_name))
     try:
         connection = mysql.connector.connect(host = 'localhost',
                                              database = 'filesys',
@@ -68,17 +68,17 @@ def insert_folders(folder_id, parent_id, path, folder_name, file_name, LinkId):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        sql_insert_folder_query = """ INSERT INTO folder
+        sql_insert_folder_query = """ INSERT INTO file
                                   (id,parent_id,path,folder_name,file_name, LinkId) VALUES 
                                   (%s,%s,%s,%s,%s,%s)"""
 
         insert_folder_tuple = (folder_id, parent_id, path, folder_name, file_name, LinkId)
         result = cursor.execute(sql_insert_folder_query, insert_folder_tuple)
         connection.commit()
-        print("inserted successfully into Folders table {0} {1} {2}".format(path, folder_name, file_name))
+        print("inserted successfully into file table {0} {1} {2}".format(path, folder_name, file_name))
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into folder MySQL table {}".format(error))
+        print("Failed inserting BLOB data into file MySQL table {}".format(error))
 
     finally:
         if connection.is_connected():
@@ -87,8 +87,8 @@ def insert_folders(folder_id, parent_id, path, folder_name, file_name, LinkId):
             print("MySQL connection is closed")
 
 
-def insert_files(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type):
-    print("Inserting into Files table {0}".format(file_id))
+def insert_properties(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type):
+    print("Inserting into properties table {0}".format(file_id))
     try:
         connection = mysql.connector.connect(host = 'localhost',
                                              database = 'filesys',
@@ -96,7 +96,7 @@ def insert_files(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        sql_insert_blob_query = """ INSERT INTO files
+        sql_insert_blob_query = """ INSERT INTO properties
                                   (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
                                   (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
 
@@ -106,7 +106,7 @@ def insert_files(file_id, mode, nlink, uid, gid, atime, mtime, ctime, size, file
         print("inserted successfully into Files table {0}".format(file_id))
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into files MySQL table {}".format(error))
+        print("Failed inserting BLOB data into properties MySQL table {}".format(error))
 
     finally:
         if connection.is_connected():
@@ -122,7 +122,7 @@ def get_highest_id():
                                              user = 'filesys',
                                              password = 'asdfgh123')
         cursor = connection.cursor()
-        max_id = "select max(Id) from folder"
+        max_id = "select max(Id) from file"
         cursor.execute(max_id)
         result = cursor.fetchall()
         connection.commit()
@@ -182,7 +182,7 @@ def writing_db(path):
                 os.chdir(os.path.join(r))
                 try:
                     if not os.path.islink(fol):
-                        insert_files(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                        insert_properties(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
                                      os.stat(os.path.join(r, fol)).st_nlink, os.stat(r).st_uid, os.stat(r).st_gid,
                                      os.stat(r).st_atime, os.stat(r).st_mtime, os.stat(r).st_ctime,
                                      os.stat(os.path.join(r, fol)).st_size,
@@ -190,7 +190,7 @@ def writing_db(path):
                     else:
                         print("True for ", fol)
                         print("True for ", os.path.join(r))
-                        insert_files(max_id, str(99999),
+                        insert_properties(max_id, str(99999),
                                      str(1), os.stat(r).st_uid, os.stat(r).st_gid,
                                      str(int(time.time())),
                                      str(int(time.time())),
@@ -202,10 +202,10 @@ def writing_db(path):
                     if os.path.islink(fol):
                         print("True for ", fol)
                         print("True for ", os.path.join(r))
-                        insert_folders(max_id, os.stat(r).st_ino, r, "", fol,
+                        insert_file(max_id, os.stat(r).st_ino, r, "", fol,
                                        os.stat(os.path.join(r, fol)).st_ino)
                     else:
-                        insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, r, "", fol, str(0))
+                        insert_file(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, r, "", fol, str(0))
                 except OSError as e:
                     print(e.errno)
                 try:
@@ -232,10 +232,10 @@ def writing_db(path):
                     if os.path.islink(fol):
                         print("True for ", fol)
                         print("True for ", os.path.join(r))
-                        insert_folders(max_id,stat(r).st_ino,os.path.join(r, fol), fol, "",
+                        insert_file(max_id,stat(r).st_ino,os.path.join(r, fol), fol, "",
                                        os.stat(os.path.join(r, fol)).st_ino)
                     else:
-                        insert_folders(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, os.path.join(r, fol),
+                        insert_file(os.stat(os.path.join(r, fol)).st_ino, os.stat(r).st_ino, os.path.join(r, fol),
                                        fol, "", str(0))
                 except OSError as e:
                     print(e.errno)
@@ -243,13 +243,13 @@ def writing_db(path):
                     if os.path.islink(fol):
                         print("True for ", fol)
                         print("True for ", os.path.join(r))
-                        insert_files(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                        insert_properties(os.stat(str(os.path.join(r, fol))).st_ino, os.stat(os.path.join(r, fol)).st_mode,
                                      os.stat(os.path.join(r, fol)).st_nlink, os.stat(r).st_uid, os.stat(r).st_gid,
                                      os.stat(r).st_atime, os.stat(r).st_mtime, os.stat(r).st_ctime,
                                      os.stat(os.path.join(r, fol)).st_size,
                                      str(mime.guess_type(os.path.join(r, fol))))
                     else:
-                        insert_files(os.stat(os.path.join(r, fol)).st_ino, os.stat(os.path.join(r, fol)).st_mode,
+                        insert_properties(os.stat(os.path.join(r, fol)).st_ino, os.stat(os.path.join(r, fol)).st_mode,
                                      os.stat(os.path.join(r, fol)).st_nlink,
                                      os.stat(r).st_uid, os.stat(r).st_gid, os.stat(r).st_atime, os.stat(r).st_mtime,
                                      os.stat(r).st_ctime, os.stat(os.path.join(r, fol)).st_size, "folder")
