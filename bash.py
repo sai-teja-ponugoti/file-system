@@ -17,7 +17,7 @@ def get_parent_id(path=None, parent_id=None):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        sql_insert_blob_query = """ select id from folder where folder_name != '' and path = %s"""
+        sql_insert_blob_query = """ select id from file where folder_name != '' and path = %s"""
         cursor.execute(sql_insert_blob_query, (path,))
         result = cursor.fetchall()
         connection.commit()
@@ -47,8 +47,8 @@ def ls_function(parentid):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        folder_names_sql = """ select folder_name as name from folder where parent_id = %s and folder_name != ''"""
-        file_names_sql = """ select file_name as name from folder where parent_id = %s and file_name != ''"""
+        folder_names_sql = """ select folder_name as name from file where parent_id = %s and folder_name != ''"""
+        file_names_sql = """ select file_name as name from file where parent_id = %s and file_name != ''"""
         cursor.execute(folder_names_sql, (parent_id,))
         result = cursor.fetchall()
         connection.commit()
@@ -69,7 +69,7 @@ def ls_function(parentid):
         print("")
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed connecting to Database :".format(error))
 
     finally:
         if connection.is_connected():
@@ -85,7 +85,7 @@ def get_file_name(id=None):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        file_names_sql = """ select file_name as name from folder where id = %s and file_name != ''"""
+        file_names_sql = """ select file_name as name from file where id = %s and file_name != ''"""
         cursor.execute(file_names_sql, (id,))
         result = cursor.fetchall()
         connection.commit()
@@ -95,7 +95,7 @@ def get_file_name(id=None):
             break;
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed connecting to Database :".format(error))
 
     finally:
         if connection.is_connected():
@@ -206,9 +206,9 @@ def lsl_function(parent_id, user, group):
                                              password = 'asdfgh123')
 
         cursor = connection.cursor()
-        folder_names_sql = """select mode,nlink,uid,gid,size,mtime,folder_name,LinkId from folder  join files on  files.id = folder.id 
+        folder_names_sql = """select mode,nlink,uid,gid,size,mtime,folder_name,LinkId from file  join properties on  properties.id = file.id 
         where parent_id = %s and folder_name != ''"""
-        file_names_sql = """ select mode,nlink,uid,gid,size,mtime,file_name,LinkId from folder  join files on  files.id = folder.id 
+        file_names_sql = """ select mode,nlink,uid,gid,size,mtime,file_name,LinkId from file  join properties on  properties.id = file.id 
         where parent_id = %s and file_name != ''"""
         cursor.execute(folder_names_sql, (parent_id,))
         result = cursor.fetchall()
@@ -243,7 +243,7 @@ def lsl_function(parent_id, user, group):
         # print("")
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed connecting to Database :".format(error))
 
     finally:
         if connection.is_connected():
@@ -301,14 +301,14 @@ def cd_function(pwd=None, command=None, parent_id=None):
                     path = pwd + c[1]
 
             cursor = connection.cursor()
-            sql_insert_blob_query = """ select id from folder where folder_name != '' and path = %s"""
+            sql_insert_blob_query = """ select id from file where folder_name != '' and path = %s"""
 
             cursor.execute(sql_insert_blob_query, (path,))
             result = cursor.fetchall()
             connection.commit()
 
         except mysql.connector.Error as error:
-            print("Failed Connecting to Mysql Server due to {}".format(error))
+            print("Failed connecting to Database :".format(error))
 
         finally:
             if connection.is_connected():
@@ -329,7 +329,7 @@ def cd_function(pwd=None, command=None, parent_id=None):
                                                  password = 'asdfgh123')
 
             cursor = connection.cursor()
-            sql_insert_blob_query = """ select id from folder where folder_name != '' and path = %s"""
+            sql_insert_blob_query = """ select id from file where folder_name != '' and path = %s"""
 
             cursor.execute(sql_insert_blob_query, (c[1],))
             result = cursor.fetchall()
@@ -341,7 +341,7 @@ def cd_function(pwd=None, command=None, parent_id=None):
             # print("printing result  = {0}".format(r[0]))
 
         except mysql.connector.Error as error:
-            print("Failed Connecting to Mysql Server due to {}".format(error))
+            print("Failed connecting to Database :".format(error))
 
         finally:
             if connection.is_connected():
@@ -368,10 +368,10 @@ def find_function(command=None):
         find_query = """"""
         result_list_print = []
         cursor = connection.cursor()
-        find_query_file = """select mode,nlink,uid,gid,size,mtime,concat(path,"/",file_name) as file from folder 
-            join files on files.id = folder.id where file_name like %s """
-        find_query_folder = """select mode,nlink,uid,gid,size,mtime,path as file from 
-            folder join files on files.id = folder.id where folder_name like %s """
+        find_query_file = """select mode,nlink,uid,gid,size,mtime,concat(path,"/",file_name)  from file 
+            join properties on file.id = properties.id where file_name like %s """
+        find_query_folder = """select mode,nlink,uid,gid,size,mtime,path  from 
+            file join properties on file.id = properties.id where folder_name like %s """
         name = '%' + name
         name += '%'
         cursor.execute(find_query_file, (name,))
@@ -401,7 +401,7 @@ def find_function(command=None):
             print("")
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed connecting to Database :".format(error))
 
     finally:
         if connection.is_connected():
@@ -424,7 +424,7 @@ def grep_function(pwd, command):
         find_query = """"""
         result_list_print = []
         cursor = connection.cursor()
-        all_path_file_ids = "select id,file_name from folder  where path =  \"" + pwd + "\" and file_name like %s"
+        all_path_file_ids = "select id,file_name from file  where path =  \"" + pwd + "\" and file_name like %s"
         name = '%' + name
         name += '%'
         cursor.execute(all_path_file_ids, (name,))
@@ -432,8 +432,8 @@ def grep_function(pwd, command):
         connection.commit()
         for r in result:
             like_search_pattern = '%' + search_pattern + '%'
-            find_file_id = "select folder.id,file_name from folder join data_blocks on folder.id = data_blocks.id " \
-                           "where folder.id = " \
+            find_file_id = "select file.id,file_name from file join data_blocks on file.id = data_blocks.id " \
+                           "where file.id = " \
                            " \"" + str(r[0]) + "\" and data like %s "
             cursor.execute(find_file_id, (like_search_pattern,))
             result_file_id = cursor.fetchall()
@@ -451,7 +451,7 @@ def grep_function(pwd, command):
                         print("line {0} : {1} in file : {2}".rjust(8).format(l, data[0][0].decode('utf8').splitlines()[l], re[1]))
 
     except mysql.connector.Error as error:
-        print("Failed inserting BLOB data into MySQL table {}".format(error))
+        print("Failed connecting to Database {}:".format(error))
 
     finally:
         if connection.is_connected():
@@ -468,17 +468,17 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
                                              password = 'asdfgh123')
         # result_list_print = []
         cursor = connection.cursor()
-        max_id = "select max(Id) from folder"
+        max_id = "select max(Id) from file"
         cursor.execute(max_id)
         result = cursor.fetchall()
         connection.commit()
-        new_dir_folder_table = """INSERT INTO folder
+        new_dir_folder_table = """INSERT INTO file
                                   (id,parent_id,path,folder_name,file_name,LinkId) VALUES 
                                   (%s,%s,%s,%s,%s,%s)"""
-        new_dir_file_table = """ INSERT INTO files
+        new_dir_file_table = """ INSERT INTO properties
                                   (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
                                   (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
-        folder_name_check = """select folder_name from folder where folder_name != '' and parent_id = %s """
+        folder_name_check = """select folder_name from file where folder_name != '' and parent_id = %s """
         check_tuple = parent_id
         cursor.execute(folder_name_check, (check_tuple,))
         check = cursor.fetchall()
@@ -505,7 +505,7 @@ def new_directory(pwd=None, parent_id=None, dir_name=None):
         else:
             print("mkdir: cannot create directory ‘" + dir_name + "’: File exists")
     except mysql.connector.Error as error:
-        print("Failed connecting to Database with error :{0}".format(error))
+        print("Failed connecting to Database :".format(error))
 
     finally:
         if connection.is_connected():
@@ -525,7 +525,7 @@ def create_touch_file(pwd, parent_id, command):
                                              password = 'asdfgh123')
         cursor = connection.cursor()
         # check if a file exists with the same name
-        check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
+        check_file_query = "select id,file_name from file where parent_id = %s and file_name != ''"
         cursor.execute(check_file_query, (parent_id,))
         result = cursor.fetchall()
         connection.commit()
@@ -536,14 +536,14 @@ def create_touch_file(pwd, parent_id, command):
         # if file does not exists process to create a new empty file
         if not check:
             cursor = connection.cursor()
-            max_id = "select max(Id) from folder"
+            max_id = "select max(Id) from file"
             cursor.execute(max_id)
             result = cursor.fetchall()
             connection.commit()
-            new_dir_folder_table = """INSERT INTO folder
+            new_dir_folder_table = """INSERT INTO file
                                       (id,parent_id,path,folder_name,file_name,LinkId) VALUES 
                                       (%s,%s,%s,%s,%s,%s)"""
-            new_dir_file_table = """ INSERT INTO files
+            new_dir_file_table = """ INSERT INTO properties
                                       (id, mode, nlink, uid, gid, atime, mtime, ctime, size, file_type) VALUES
                                       (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"""
             insert_folder_tuple = (
@@ -561,7 +561,7 @@ def create_touch_file(pwd, parent_id, command):
             print("touch : cannot create file :‘" + file_name + "’: File exists")
 
     except mysql.connector.Error as error:
-        print("Failed connecting to Database with error :{0}".format(error))
+        print("Failed connecting to Database : {0}".format(error))
 
     finally:
         if connection.is_connected():
@@ -581,7 +581,7 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                                                  password = 'asdfgh123')
             # result_list_print = []
             cursor = connection.cursor()
-            check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
+            check_file_query = "select id,file_name from file where parent_id = %s and file_name != ''"
             cursor.execute(check_file_query, (parent_id,))
             result = cursor.fetchall()
             connection.commit()
@@ -595,13 +595,13 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                 cursor.execute("""SET FOREIGN_KEY_CHECKS=0;""")
                 connection.commit()
                 # delete file from folders table
-                delete_file_query_Q1 = """delete from folder where id = %s"""
+                delete_file_query_Q1 = """delete from file where id = %s"""
                 cursor = connection.cursor()
                 cursor.execute(delete_file_query_Q1, (id,))
                 connection.commit()
                 # delete file from files table
                 cursor = connection.cursor()
-                delete_file_query_Q2 = """delete from files where id = %s"""
+                delete_file_query_Q2 = """delete from properties where id = %s"""
                 cursor.execute(delete_file_query_Q2, (id,))
                 connection.commit()
                 cursor = connection.cursor()
@@ -629,7 +629,7 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                                                      password = 'asdfgh123')
                 # result_list_print = []
                 cursor = connection.cursor()
-                check_file_query = "select id,folder_name from folder where parent_id = %s and folder_name != ''"
+                check_file_query = "select id,folder_name from file where parent_id = %s and folder_name != ''"
                 cursor.execute(check_file_query, (parent_id,))
                 result = cursor.fetchall()
                 connection.commit()
@@ -640,15 +640,15 @@ def delete_directory(pwd=None, parent_id=None, command=None):
                         check = True
                 if check:
                     # selecting all the files and folder in the folder to delete them recursively
-                    select_file_ids = """select id from folder where parent_id = %s"""
+                    select_file_ids = """select id from file where parent_id = %s"""
                     # delete folder from folders tables
-                    delete_folder_Q1 = """delete from folder where id = %s """
+                    delete_folder_Q1 = """delete from file where id = %s """
                     # delete folder from files tables
-                    delete_folder_Q2 = """delete from files where id = %s """
+                    delete_folder_Q2 = """delete from properties where id = %s """
                     # delete folder files from folders tables
-                    delete_folder_Q3 = """delete from folder where parent_id = %s"""
+                    delete_folder_Q3 = """delete from file where parent_id = %s"""
                     # delete folder files from files table
-                    delete_folder_Q4 = """delete from files where id not in (select id from folder)"""
+                    delete_folder_Q4 = """delete from properties where id not in (select id from file)"""
                     # delete files from data_blocks table
                     delete_folder_Q5 = """delete from data_blocks where id = %s """
                     cursor = connection.cursor()
@@ -700,7 +700,7 @@ def execute_executable_pwd(pwd, parent_id, command):
                                              use_pure = True)
         cursor = connection.cursor()
         # check if a file exists with the same name
-        check_file_query = "select id,file_name from folder where parent_id = %s and file_name != ''"
+        check_file_query = "select id,file_name from file where parent_id = %s and file_name != ''"
         cursor.execute(check_file_query, (parent_id,))
         result = cursor.fetchall()
         connection.commit()
@@ -748,7 +748,7 @@ def execute_executable_PATH(PATH, pwd, parent_id, command):
                                              use_pure = True)
         for p in PATH:
             cursor = connection.cursor()
-            check_file_query = "select id,file_name from folder where path = %s and file_name != ''"
+            check_file_query = "select id,file_name from file where path = %s and file_name != ''"
             cursor.execute(check_file_query, (p,))
             result = cursor.fetchall()
             connection.commit()
