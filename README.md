@@ -24,7 +24,7 @@ sudo python3 data_dump.py
 *  **A report for the project development process has been documented in "report.pdf"**
 
 
-* ** bash command that can be used in bash.py are :**
+*  **bash command that can be used in bash.py are :**
 	
     *  pwd : pwd commad can be used to give the present working directory.Example : "pwd"
     *  cd :  chnage directory. Example : "cd ./home/sai/Desktop"
