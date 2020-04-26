@@ -1,4 +1,3 @@
-
 *  **System requirements:**
         
     * Python 3.6.9
@@ -9,6 +8,8 @@
     * protobuf==3.6.1
     * six==1.14.0
     * termcolor==1.1.0
+
+
 
 
 *  **Script to implement bash and other shell scripts is in bash.py .To run bash.py :**
