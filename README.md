@@ -31,11 +31,11 @@ sudo python3 data_dump.py
     *  **ls** : list command. Example : "ls" and "ls -l"
     *  **find** : this command is used too find files with partical name in the given directory. Example : "find home/sai/Desktop exam"
     *  **grep** :   this command accepts the pattern to be searched and the partial file name to be searched in pwd.Example : "grep "create" MySql
-    *  echo $PATH :  this command can be used to check the PATH varaibles of the system. Example : "echo $PATH"
-    *  exciutables :  We can execute any exicutables which are in the path which is the PATH varaible just by giving file name directly.Example " mysql -V" 
-    *  touch : This command is implemented to create a new file in the pwd. Example : “touch a.txt”. 
-    *  mkdir : This command is implemented to create new directory in pwd. Example : “mkdir 656”. 
-    *  rm file_name :  This command can be used to delete specific file name. Example : “rm a.txt”
-    *  rm -r dir_name :  This command can be used to delete all the conetnts of a directory along with all the files and folders inside it. Example : “rm -r 656” .
+    *  **echo $PATH** :  this command can be used to check the PATH varaibles of the system. Example : "echo $PATH"
+    *  **exciutables** :  We can execute any exicutables which are in the path which is the PATH varaible just by giving file name directly.Example " mysql -V" 
+    *  **touch** : This command is implemented to create a new file in the pwd. Example : “touch a.txt”. 
+    *  **mkdir** : This command is implemented to create new directory in pwd. Example : “mkdir 656”. 
+    *  **rm file_name** :  This command can be used to delete specific file name. Example : “rm a.txt”
+    *  **rm -r dir_name** :  This command can be used to delete all the conetnts of a directory along with all the files and folders inside it. Example : “rm -r 656” .
 
 
