@@ -26,11 +26,11 @@ sudo python3 data_dump.py
 
 *  **bash command that can be used in bash.py are :**
 	
-    *  pwd : pwd commad can be used to give the present working directory.Example : "pwd"
-    *  cd :  chnage directory. Example : "cd ./home/sai/Desktop"
-    *  ls : list command. Example : "ls" and "ls -l"
-    *  find : this command is used too find files with partical name in the given directory. Example : "find home/sai/Desktop exam"
-    *  grep :   this command accepts the pattern to be searched and the partial file name to be searched in pwd.Example : "grep "create" MySql
+    *  **pwd** : pwd commad can be used to give the present working directory.Example : "pwd"
+    *  **cd** :  chnage directory. Example : "cd ./home/sai/Desktop"
+    *  **ls** : list command. Example : "ls" and "ls -l"
+    *  **find** : this command is used too find files with partical name in the given directory. Example : "find home/sai/Desktop exam"
+    *  **grep** :   this command accepts the pattern to be searched and the partial file name to be searched in pwd.Example : "grep "create" MySql
     *  echo $PATH :  this command can be used to check the PATH varaibles of the system. Example : "echo $PATH"
     *  exciutables :  We can execute any exicutables which are in the path which is the PATH varaible just by giving file name directly.Example " mysql -V" 
     *  touch : This command is implemented to create a new file in the pwd. Example : “touch a.txt”. 
