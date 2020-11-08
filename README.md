@@ -39,3 +39,4 @@ sudo python3 data_dump.py
     *  **rm -r dir_name** :  This command can be used to delete all the conetnts of a directory along with all the files and folders inside it. Example : “rm -r 656” .
 
 
+*  **Video demo link:**https://youtu.be/cftAfSfvMHQ
